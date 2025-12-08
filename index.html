@@ -13,7 +13,7 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #f5f5f7;
             min-height: 100vh;
             display: flex;
             justify-content: center;
@@ -23,10 +23,10 @@
 
         .container {
             background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            padding: 40px;
-            max-width: 600px;
+            border-radius: 24px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+            padding: 48px;
+            max-width: 680px;
             width: 100%;
         }
 
@@ -136,13 +136,34 @@
 
         .practice-area {
             text-align: center;
-            padding: 30px 0;
+            padding: 40px 0;
         }
 
         .word-input-large {
-            font-size: 24px;
-            text-align: center;
-            padding: 20px;
+            font-size: 20px;
+            text-align: left;
+            padding: 20px 24px;
+            border: 2px solid #e5e5e7;
+            border-radius: 12px;
+            width: 100%;
+            transition: border-color 0.2s;
+        }
+
+        .word-input-large:focus {
+            border-color: #5b5fc7;
+        }
+
+        .word-input-large::placeholder {
+            color: #c7c7cc;
+        }
+
+        .input-label {
+            text-align: left;
+            font-size: 16px;
+            color: #1d1d1f;
+            font-weight: 500;
+            margin-bottom: 12px;
+            display: block;
         }
 
         .feedback {
@@ -191,10 +212,11 @@
         }
 
         .progress {
-            margin: 20px 0;
+            margin: 0 0 32px 0;
             font-size: 18px;
             color: #667eea;
             font-weight: 600;
+            text-align: left;
         }
 
         .stats {
@@ -236,34 +258,125 @@
         }
 
         .speaker-btn {
-            background: #17a2b8;
-            font-size: 24px;
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
+            background: #5b5fc7;
+            font-size: 20px;
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            margin: 20px;
+            box-shadow: 0 2px 8px rgba(91, 95, 199, 0.3);
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+            border: none;
+        }
+
+        .speaker-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(91, 95, 199, 0.4);
+        }
+
+        .input-container {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .input-wrapper {
+            flex: 1;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 16px;
+            margin-top: 32px;
+            justify-content: space-between;
+        }
+
+        .btn-skip {
+            background: white;
+            color: #1d1d1f;
+            border: 2px solid #e5e5e7;
+            padding: 16px 32px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-skip:hover {
+            border-color: #d1d1d6;
+            background: #f9f9f9;
+        }
+
+        .btn-check {
+            background: #5b5fc7;
+            color: white;
+            border: none;
+            padding: 16px 48px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 2px 8px rgba(91, 95, 199, 0.3);
+        }
+
+        .btn-check:hover {
+            background: #4a4eb5;
+            box-shadow: 0 4px 12px rgba(91, 95, 199, 0.4);
+        }
+
+        .end-session-btn {
+            position: absolute;
+            top: 24px;
+            right: 24px;
+            background: transparent;
+            border: none;
+            color: #86868b;
+            font-size: 16px;
+            cursor: pointer;
+            padding: 8px 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: color 0.2s;
+        }
+
+        .end-session-btn:hover {
+            color: #1d1d1f;
         }
 
         .voice-toggle {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 8px;
-            margin: 15px 0;
+            background: transparent;
+            padding: 0;
+            border-radius: 0;
+            margin: 12px 0;
             text-align: left;
         }
 
         .voice-toggle label {
-            display: flex;
+            display: inline-flex;
             align-items: center;
             cursor: pointer;
-            font-size: 15px;
+            font-size: 13px;
+            color: #86868b;
+            gap: 6px;
         }
 
         .voice-toggle input[type="checkbox"] {
-            margin-right: 10px;
+            margin: 0;
             width: auto;
             cursor: pointer;
         }
@@ -271,11 +384,10 @@
         .premium-badge {
             background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
             color: white;
-            padding: 3px 8px;
-            border-radius: 12px;
-            font-size: 11px;
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-size: 9px;
             font-weight: bold;
-            margin-left: 8px;
         }
 
         .loading {
@@ -392,29 +504,39 @@
 
         <!-- Practice Screen -->
         <div id="practiceScreen" class="screen">
+            <button class="end-session-btn" onclick="app.endPractice()">
+                End Session ✕
+            </button>
             <div class="practice-area">
                 <div class="progress" id="progressText">Word 1 of 10</div>
                 
+                <label class="input-label">Type the word you hear:</label>
+                
+                <div class="input-container">
+                    <div class="input-wrapper">
+                        <input type="text" id="spellingInput" class="word-input-large" placeholder="Type here..." onkeypress="if(event.key==='Enter') app.checkSpelling()">
+                    </div>
+                    <button class="speaker-btn" id="speakerBtn" onclick="app.playWord()">🔊</button>
+                </div>
+
                 <div class="voice-toggle">
                     <label>
                         <input type="checkbox" id="premiumVoiceToggle" onchange="app.handleVoiceToggle()"> 
                         Use Premium Voice
                         <span class="premium-badge">PRO</span>
                     </label>
-                    <p class="help-text" style="margin-left: 30px; margin-top: 5px;">Higher quality AI voice with caching</p>
                 </div>
 
-                <button class="btn speaker-btn" id="speakerBtn" onclick="app.playWord()">🔊</button>
-                <p class="help-text">Listen and type the word:</p>
-                <input type="text" id="spellingInput" class="word-input-large" placeholder="Type here..." onkeypress="if(event.key==='Enter') app.checkSpelling()">
-                
                 <div id="feedback" class="feedback" style="display:none;"></div>
                 <div id="wordComparison" class="word-comparison" style="display:none;"></div>
                 
-                <div class="btn-group" id="practiceButtons">
-                    <button class="btn" onclick="app.checkSpelling()">✓ Check</button>
-                    <button class="btn btn-secondary" onclick="app.skipWord()">→ Skip</button>
-                    <button class="btn btn-danger" onclick="app.endPractice()">✕ End Practice</button>
+                <div class="action-buttons" id="practiceButtons">
+                    <button class="btn-skip" onclick="app.skipWord()">
+                        Skip ▶
+                    </button>
+                    <button class="btn-check" onclick="app.checkSpelling()">
+                        Check Spelling →
+                    </button>
                 </div>
                 <div class="btn-group" id="nextWordButton" style="display:none;">
                     <button class="btn btn-success" onclick="app.nextWordAfterError()">→ Next Word</button>
