@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Spelling Trainer</title>
+    <title>Spelling Trainer v2.0</title>
     <style>
         * {
             margin: 0;
@@ -163,6 +163,33 @@
             color: #721c24;
         }
 
+        .word-comparison {
+            font-size: 24px;
+            margin: 20px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 2px;
+        }
+
+        .word-comparison .correct-letter {
+            color: #28a745;
+        }
+
+        .word-comparison .wrong-letter {
+            color: #dc3545;
+            font-weight: bold;
+            text-decoration: underline;
+        }
+
+        .word-comparison .label {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 10px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+        }
+
         .progress {
             margin: 20px 0;
             font-size: 18px;
@@ -264,11 +291,45 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+
+        .word-history {
+            margin-top: 20px;
+            text-align: left;
+        }
+
+        .word-history h3 {
+            font-size: 16px;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .history-item {
+            background: #f8f9fa;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .history-correct {
+            color: #28a745;
+        }
+
+        .history-incorrect {
+            color: #dc3545;
+        }
+
+        .btn-view-history {
+            background: #17a2b8;
+            font-size: 14px;
+            padding: 8px 16px;
+            margin: 5px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🎓 Spelling Trainer</h1>
+        <h1>🎓 Spelling Trainer v2.0</h1>
 
         <!-- Home Screen -->
         <div id="homeScreen" class="screen active">
@@ -276,6 +337,7 @@
                 <button class="btn" onclick="app.showScreen('addWordsScreen')">➕ Add Words</button>
                 <button class="btn" onclick="app.startPractice()">✏️ Practice All Words</button>
                 <button class="btn btn-secondary" onclick="app.showMisspelledWords()">📝 Practice Misspelled Words</button>
+                <button class="btn btn-view-history" onclick="app.showWordHistory()">📊 View Word History</button>
             </div>
             <div class="stats">
                 <div class="stat-card">
@@ -339,17 +401,23 @@
                         Use Premium Voice
                         <span class="premium-badge">PRO</span>
                     </label>
-                    <p class="help-text" style="margin-left: 30px; margin-top: 5px;">Higher quality AI voice (requires API setup)</p>
+                    <p class="help-text" style="margin-left: 30px; margin-top: 5px;">Higher quality AI voice with caching</p>
                 </div>
 
                 <button class="btn speaker-btn" id="speakerBtn" onclick="app.playWord()">🔊</button>
                 <p class="help-text">Listen and type the word:</p>
                 <input type="text" id="spellingInput" class="word-input-large" placeholder="Type here..." onkeypress="if(event.key==='Enter') app.checkSpelling()">
+                
                 <div id="feedback" class="feedback" style="display:none;"></div>
-                <div class="btn-group">
+                <div id="wordComparison" class="word-comparison" style="display:none;"></div>
+                
+                <div class="btn-group" id="practiceButtons">
                     <button class="btn" onclick="app.checkSpelling()">✓ Check</button>
                     <button class="btn btn-secondary" onclick="app.skipWord()">→ Skip</button>
                     <button class="btn btn-danger" onclick="app.endPractice()">✕ End Practice</button>
+                </div>
+                <div class="btn-group" id="nextWordButton" style="display:none;">
+                    <button class="btn btn-success" onclick="app.nextWordAfterError()">→ Next Word</button>
                 </div>
             </div>
         </div>
@@ -376,6 +444,15 @@
                 <button class="btn btn-success" onclick="app.practiceMissed()">📝 Practice Missed Words</button>
             </div>
         </div>
+
+        <!-- Word History Screen -->
+        <div id="wordHistoryScreen" class="screen">
+            <h2>📊 Word History</h2>
+            <div id="wordHistoryList" class="word-list"></div>
+            <div class="btn-group">
+                <button class="btn btn-secondary" onclick="app.showScreen('homeScreen')">🏠 Back to Home</button>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -389,6 +466,9 @@
             incorrectInSession: 0,
             usePremiumVoice: false,
             currentAudio: null,
+            audioCache: {}, // Cache for audio files
+            wordHistory: {}, // History for each word: { word: { correct: 5, incorrect: 2, mistakes: ['wrng', 'worng'] } }
+            nextAudioPreloading: null,
 
             init() {
                 this.loadData();
@@ -397,7 +477,6 @@
             },
 
             async checkPremiumVoiceAvailability() {
-                // Check if premium voice API is available
                 try {
                     const response = await fetch('/api/speak', {
                         method: 'POST',
@@ -413,7 +492,6 @@
                         }
                     }
                 } catch (error) {
-                    // Premium voice not available, disable toggle
                     const toggle = document.getElementById('premiumVoiceToggle');
                     if (toggle) {
                         toggle.disabled = true;
@@ -443,6 +521,10 @@
                 words.forEach(word => {
                     if (!this.allWords.includes(word)) {
                         this.allWords.push(word);
+                        // Initialize history for new word
+                        if (!this.wordHistory[word]) {
+                            this.wordHistory[word] = { correct: 0, incorrect: 0, mistakes: [] };
+                        }
                     }
                 });
 
@@ -464,6 +546,9 @@
                     words.forEach(word => {
                         if (!this.allWords.includes(word)) {
                             this.allWords.push(word);
+                            if (!this.wordHistory[word]) {
+                                this.wordHistory[word] = { correct: 0, incorrect: 0, mistakes: [] };
+                            }
                         }
                     });
 
@@ -500,7 +585,6 @@
                 this.correctInSession = 0;
                 this.incorrectInSession = 0;
                 
-                // Restore premium voice preference
                 const savedPref = localStorage.getItem('usePremiumVoice');
                 this.usePremiumVoice = savedPref === 'true';
                 const toggle = document.getElementById('premiumVoiceToggle');
@@ -525,7 +609,7 @@
                 this.loadNextWord();
             },
 
-            loadNextWord() {
+            async loadNextWord() {
                 if (this.currentWordIndex >= this.currentPracticeList.length) {
                     this.showResults();
                     return;
@@ -536,45 +620,80 @@
                     `Word ${this.currentWordIndex + 1} of ${this.currentPracticeList.length}`;
                 document.getElementById('spellingInput').value = '';
                 document.getElementById('feedback').style.display = 'none';
+                document.getElementById('wordComparison').style.display = 'none';
+                document.getElementById('practiceButtons').style.display = 'flex';
+                document.getElementById('nextWordButton').style.display = 'none';
                 document.getElementById('spellingInput').focus();
                 
+                // Play current word
                 setTimeout(() => this.playWord(), 500);
+                
+                // Preload next word if using premium voice
+                if (this.usePremiumVoice && this.currentWordIndex + 1 < this.currentPracticeList.length) {
+                    const nextWord = this.currentPracticeList[this.currentWordIndex + 1];
+                    this.preloadAudio(nextWord);
+                }
+            },
+
+            async preloadAudio(word) {
+                // Don't preload if already cached
+                if (this.audioCache[word]) return;
+                
+                try {
+                    const response = await fetch('/api/speak', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ word: word })
+                    });
+
+                    if (response.ok) {
+                        const audioBlob = await response.blob();
+                        const audioUrl = URL.createObjectURL(audioBlob);
+                        this.audioCache[word] = audioUrl;
+                    }
+                } catch (error) {
+                    console.log('Preload failed for:', word);
+                }
             },
 
             async playWord() {
                 const btn = document.getElementById('speakerBtn');
                 
-                // Stop any currently playing audio
                 if (this.currentAudio) {
                     this.currentAudio.pause();
                     this.currentAudio = null;
                 }
 
                 if (this.usePremiumVoice) {
-                    // Use premium serverless API
                     try {
                         btn.innerHTML = '<div class="loading"></div>';
                         btn.disabled = true;
 
-                        const response = await fetch('/api/speak', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ word: this.currentWord })
-                        });
-
-                        if (response.ok) {
-                            const audioBlob = await response.blob();
-                            const audioUrl = URL.createObjectURL(audioBlob);
-                            this.currentAudio = new Audio(audioUrl);
-                            
-                            this.currentAudio.onended = () => {
-                                URL.revokeObjectURL(audioUrl);
-                            };
-                            
-                            await this.currentAudio.play();
+                        let audioUrl;
+                        
+                        // Check cache first
+                        if (this.audioCache[this.currentWord]) {
+                            audioUrl = this.audioCache[this.currentWord];
                         } else {
-                            throw new Error('API failed');
+                            // Fetch from API
+                            const response = await fetch('/api/speak', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ word: this.currentWord })
+                            });
+
+                            if (response.ok) {
+                                const audioBlob = await response.blob();
+                                audioUrl = URL.createObjectURL(audioBlob);
+                                this.audioCache[this.currentWord] = audioUrl;
+                            } else {
+                                throw new Error('API failed');
+                            }
                         }
+
+                        this.currentAudio = new Audio(audioUrl);
+                        await this.currentAudio.play();
+                        
                     } catch (error) {
                         console.error('Premium voice failed:', error);
                         alert('Premium voice unavailable. Falling back to standard voice.');
@@ -586,7 +705,6 @@
                         btn.disabled = false;
                     }
                 } else {
-                    // Use free Web Speech API
                     this.playWordWithWebSpeech();
                 }
             },
@@ -600,13 +718,45 @@
                 speechSynthesis.speak(utterance);
             },
 
+            compareWords(userWord, correctWord) {
+                const maxLen = Math.max(userWord.length, correctWord.length);
+                let comparisonHTML = '<div class="label">Your answer:</div><div>';
+                
+                for (let i = 0; i < maxLen; i++) {
+                    const userChar = userWord[i] || '';
+                    const correctChar = correctWord[i] || '';
+                    
+                    if (userChar === correctChar) {
+                        comparisonHTML += `<span class="correct-letter">${userChar || '_'}</span>`;
+                    } else {
+                        comparisonHTML += `<span class="wrong-letter">${userChar || '_'}</span>`;
+                    }
+                }
+                
+                comparisonHTML += '</div><div class="label" style="margin-top: 15px;">Correct spelling:</div><div>';
+                
+                for (let i = 0; i < correctWord.length; i++) {
+                    comparisonHTML += `<span class="correct-letter">${correctWord[i]}</span>`;
+                }
+                
+                comparisonHTML += '</div>';
+                
+                return comparisonHTML;
+            },
+
             checkSpelling() {
                 const input = document.getElementById('spellingInput').value.trim().toLowerCase();
                 const feedback = document.getElementById('feedback');
+                const comparison = document.getElementById('wordComparison');
 
                 if (!input) {
                     alert('Please type a word!');
                     return;
+                }
+
+                // Update word history
+                if (!this.wordHistory[this.currentWord]) {
+                    this.wordHistory[this.currentWord] = { correct: 0, incorrect: 0, mistakes: [] };
                 }
 
                 feedback.style.display = 'block';
@@ -614,27 +764,53 @@
                 if (input === this.currentWord) {
                     feedback.className = 'feedback correct';
                     feedback.textContent = '✓ Correct! Well done!';
+                    comparison.style.display = 'none';
                     this.correctInSession++;
+                    
+                    // Update history
+                    this.wordHistory[this.currentWord].correct++;
                     
                     const idx = this.misspelledWords.indexOf(this.currentWord);
                     if (idx > -1) {
                         this.misspelledWords.splice(idx, 1);
                     }
+                    
+                    // Shorter delay for correct answers (1 second instead of 2)
+                    setTimeout(() => {
+                        this.currentWordIndex++;
+                        this.loadNextWord();
+                    }, 1000);
                 } else {
                     feedback.className = 'feedback incorrect';
-                    feedback.textContent = `✗ Incorrect. The correct spelling is: ${this.currentWord}`;
+                    feedback.textContent = '✗ Incorrect. Compare your spelling:';
+                    
+                    // Show comparison
+                    comparison.innerHTML = this.compareWords(input, this.currentWord);
+                    comparison.style.display = 'block';
+                    
                     this.incorrectInSession++;
+                    
+                    // Update history
+                    this.wordHistory[this.currentWord].incorrect++;
+                    if (!this.wordHistory[this.currentWord].mistakes.includes(input)) {
+                        this.wordHistory[this.currentWord].mistakes.push(input);
+                    }
                     
                     if (!this.misspelledWords.includes(this.currentWord)) {
                         this.misspelledWords.push(this.currentWord);
                     }
+                    
+                    // Show "Next Word" button, hide other buttons
+                    document.getElementById('practiceButtons').style.display = 'none';
+                    document.getElementById('nextWordButton').style.display = 'flex';
                 }
 
                 this.saveData();
-                setTimeout(() => {
-                    this.currentWordIndex++;
-                    this.loadNextWord();
-                }, 2000);
+            },
+
+            nextWordAfterError() {
+                this.currentWordIndex++;
+                this.loadNextWord();
             },
 
             skipWord() {
@@ -672,6 +848,48 @@
                 this.showScreen('resultsScreen');
             },
 
+            showWordHistory() {
+                const historyList = document.getElementById('wordHistoryList');
+                
+                if (Object.keys(this.wordHistory).length === 0) {
+                    historyList.innerHTML = '<p class="help-text">No practice history yet. Start practicing to see your progress!</p>';
+                } else {
+                    let html = '';
+                    
+                    // Sort words by total attempts (most practiced first)
+                    const sortedWords = Object.entries(this.wordHistory).sort((a, b) => {
+                        const totalA = a[1].correct + a[1].incorrect;
+                        const totalB = b[1].correct + b[1].incorrect;
+                        return totalB - totalA;
+                    });
+                    
+                    sortedWords.forEach(([word, history]) => {
+                        const total = history.correct + history.incorrect;
+                        const accuracy = total > 0 ? ((history.correct / total) * 100).toFixed(1) : 0;
+                        
+                        html += `
+                            <div class="word-item" style="display: block; margin-bottom: 15px;">
+                                <strong style="font-size: 18px;">${word}</strong>
+                                <div style="margin-top: 8px;">
+                                    <span class="history-correct">✓ Correct: ${history.correct}</span> | 
+                                    <span class="history-incorrect">✗ Incorrect: ${history.incorrect}</span> | 
+                                    <span style="color: #667eea;">Accuracy: ${accuracy}%</span>
+                                </div>
+                                ${history.mistakes.length > 0 ? `
+                                    <div style="margin-top: 8px; font-size: 13px; color: #666;">
+                                        <strong>Past mistakes:</strong> ${history.mistakes.join(', ')}
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `;
+                    });
+                    
+                    historyList.innerHTML = html;
+                }
+                
+                this.showScreen('wordHistoryScreen');
+            },
+
             practiceMissed() {
                 this.showMisspelledWords();
             },
@@ -691,7 +909,9 @@
             saveData() {
                 const data = {
                     allWords: this.allWords,
-                    misspelledWords: this.misspelledWords
+                    misspelledWords: this.misspelledWords,
+                    wordHistory: this.wordHistory,
+                    audioCache: {} // Don't save audio cache (too large)
                 };
                 localStorage.setItem('spellingTrainerData', JSON.stringify(data));
             },
@@ -702,6 +922,7 @@
                     const data = JSON.parse(saved);
                     this.allWords = data.allWords || [];
                     this.misspelledWords = data.misspelledWords || [];
+                    this.wordHistory = data.wordHistory || {};
                 }
             }
         };
